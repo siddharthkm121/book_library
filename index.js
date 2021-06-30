@@ -1,4 +1,8 @@
+require("dotenv").config();
+
 const express = require("express");
+const mongoose=require("mongoose");
+
 
 // Database
 const database = require("./database");
@@ -8,6 +12,15 @@ const booky = express();
 
 //configuration
 booky.use(express.json());
+
+
+mongoose.connect(process.env.MONGO_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  useFindAndModify: false,
+  useCreateIndex: true,
+})
+.then (() => console.log("connection established"));
 
 /*
 Route           /
@@ -302,11 +315,35 @@ booky.put("/book/update/publication/isbn/:name", (req, res) => {
   return res.json({ books: database.books });
 });
 
+/*
+Route           /publication/update/book
+Description     update/add new book to a publication
+Access          PUBLIC
+Parameters      isbn
+Method          PUT
+*/
+booky.put("/publication/update/book/:isbn", (req, res) => {
+  // update the publication database
+  database.publications.forEach((publication) => {
+    if (publication.id === req.body.pubId) {
+      return publication.books.push(req.params.isbn);
+    }
+  });
 
+  // update the book database
+  database.books.forEach((book) => {
+    if (book.ISBN === req.params.isbn) {
+      book.publication = req.body.pubId;
+      return;
+    }
+  });
 
-
-
-
+  return res.json({
+    books: database.books,
+    publications: database.publications,
+    message: "Successfully updated publication",
+  });
+})
 /*
 Route           /book/delete
 Description     delete a book
@@ -362,6 +399,22 @@ booky.delete("/book/delete/author/:isbn/:authorId", (req, res) => {
 });
 
 /*
+Route           /author/delete
+Description     delete a author
+Access          PUBLIC
+Parameters      id
+Method          DELETE
+*/
+booky.delete("/book/delete/:id", (req, res) => {
+  const updatedAuthorDatabase = database.author.filter(
+    (author) => author.id !== req.params.id
+  );
+
+  database.author = updatedAuthorDatabase;
+  return res.json({ author: database.author });
+});
+
+/*
 Route           /publication/delete/book
 Description     delete a book from publication 
 Access          PUBLIC
@@ -395,6 +448,22 @@ booky.delete("/publication/delete/book/:isbn/:pubId", (req, res) => {
   });
 });
 
+/*
+Route           /publications/delete
+Description     delete publication
+Access          PUBLIC
+Parameters      id
+Method          DELETE
+*/
+booky.delete("/book/delete/:id", (req, res) => {
+  const updatedPubicationDatabase = database.publication.filter(
+    (publication) => publication.id !== req.params.id
+  );
 
+  database.publication = updatedPublicationDatabase;
+  return res.json({ publication: database.publication });
+});
 
 booky.listen(3000, () => console.log("HEy server is running! 😎"));
+
+//talk to mongodb 
